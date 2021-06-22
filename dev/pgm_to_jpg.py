@@ -25,4 +25,4 @@ def batch_image(in_dir, out_dir):
 if __name__=='__main__':
     #call function for every image folder
     for subdir, dirs, files in os.walk(rootdir):
-    	batch_image('.CroppedYale/'+subdir, './CroppedYale_jpg/subdir')
+    	batch_image('.CroppedYale/'+subdir, './CroppedYale_jpg/'+subdir)

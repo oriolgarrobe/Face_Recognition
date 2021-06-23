@@ -10,9 +10,10 @@ def batch_image(in_dir, out_dir):
         print(in_dir, 'is not existed.')
         return -1
     count = 0
-    for files in glob.glob(in_dir+'/*'):
+    for files in glob.glob(in_dir+'/*.pgm'):
         filepath, filename = os.path.split(files)
-        
+        print(in_dir)
+        print(files)
         out_file = filename[0:19] + '.jpg'
         # print(filepath,',',filename, ',', out_file)
         im = Image.open(files)
@@ -24,5 +25,6 @@ def batch_image(in_dir, out_dir):
  
 if __name__=='__main__':
     #call function for every image folder
-    for subdir, dirs, files in os.walk(rootdir):
-    	batch_image('.CroppedYale/'+subdir, './CroppedYale_jpg/'+subdir)
+    for subdir, dirs, files in os.walk("./CroppedYale"):
+        if subdir!='./CroppedYale':
+    	    batch_image(subdir, './CroppedYale_jpg/'+subdir[14:])

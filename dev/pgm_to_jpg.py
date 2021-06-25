@@ -24,6 +24,8 @@ def batch_image(in_dir, out_dir):
         
  
 if __name__=='__main__':
+    #create folder
+    os.mkdir('./CroppedYale_jpg')
     #call function for every image folder
     for subdir, dirs, files in os.walk("./CroppedYale"):
         if subdir!='./CroppedYale':

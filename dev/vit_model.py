@@ -70,7 +70,7 @@ class MultiHeadAttention(nn.Module):
 
 
 class Residuals(nn.Module):
-    def __init__(self, fn):
+    def __init__(self, ffnn):
         super().__init__()
         self.ffnn = ffnn #Feed Forward Neural Network ???
 
@@ -89,4 +89,51 @@ class MLP(nn.Sequential):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(expansion * emb_size, emb_size),
+        )
+
+
+class Encoder(nn.Sequential):
+    def __init__(self, emb_size: int = 768, dropout: float = 0., f_expansion: int = 4, f_dropout: float = 0., ** kwargs):
+        super().__init__(
+            Residuals(nn.Sequential(
+                nn.LayerNorm(emb_size),
+                MultiHeadAttention(emb_size, **kwargs),
+                nn.Dropout(dropout)
+            )),
+            Residuals(nn.Sequential(
+                nn.LayerNorm(emb_size),
+                MLP(emb_size, expansion=f_expansion, dropout=f_dropout),
+                nn.Dropout(dropout)
+            )))
+
+
+class TransformerEncoder(nn.Sequential):
+    def __init__(self, n_blocks: int = 8, **kwargs):
+        super().__init__(*[Encoder(**kwargs) for _ in range(n_blocks)])
+
+
+class ClassLayer(nn.Module):
+    def __init__(self, emb_size: int = 768, n_classes: int = 100):
+        super().__init__()
+        self.class_head = nn.Sequential(
+            nn.LayerNorm(emb_size),
+            nn.Linear(emb_size, n_classes))
+    def forward(self, x: Tensor) -> Tensor:
+        mean_x = torch.mean(x, dim = 0) #mean over the sequence
+        return self.class_head(x)
+
+
+class ViT(nn.Sequential):
+    def __init__(self,
+                in_channels: int = 3,
+                patch_size: int = 16,
+                emb_size: int = 768,
+                img_size: int = 224,
+                depth: int = 12,
+                n_classes: int = 100,
+                **kwargs):
+        super().__init__(
+            PatchEmbedding(in_channels, patch_size, emb_size, img_size),
+            TransformerEncoder(depth, emb_size=emb_size, **kwargs),
+            ClassLayer(emb_size, n_classes)
         )

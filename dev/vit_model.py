@@ -120,7 +120,7 @@ class ClassLayer(nn.Module):
             nn.Linear(emb_size, n_classes))
     def forward(self, x: Tensor) -> Tensor:
         mean_x = torch.mean(x, dim = 0) #mean over the sequence
-        return self.class_head(x)
+        return self.class_head(mean_x)
 
 
 class ViT(nn.Sequential):

@@ -131,3 +131,4 @@ dmypy.json
 #ignore unzipped images
 CroppedYale/
 CroppedYale_jpg/
+Yale_Test/

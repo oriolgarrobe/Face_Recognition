@@ -132,3 +132,4 @@ dmypy.json
 CroppedYale/
 CroppedYale_jpg/
 Yale_Test/
+trained_ViT.pt/

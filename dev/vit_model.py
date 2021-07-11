@@ -1,9 +1,26 @@
+# Libraries - all required packages
+import numpy as np
+
+import torch
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+from torch import nn
+from torch import Tensor
+from PIL import Image
+from torchvision.transforms import Compose, Resize, ToTensor
+from torchsummary import summary
+
+# Model
+
+# Maybe comment this?
 class PatchEmbedding(nn.Module):
-    def __init__(self, in_channels: int = 1, patch_size: int = 16, emb_size: int = 768, img_size: int = 224):
+    def __init__(self, in_channels: int = 3, patch_size: int = 16, emb_size: int = 768, img_size: int = 224, device='cpu'):
         super().__init__()
         self.patch_size = patch_size #16
         self.class_token = torch.randn(1,1,emb_size) #image representation
         self.pos_embedding = torch.randn((img_size // patch_size)**2 + 1, emb_size) #positional embedding of patch
+        self.device = device
 
         self.projection = nn.Sequential(
             # Convolution Layer to each patch
@@ -18,16 +35,14 @@ class PatchEmbedding(nn.Module):
         x = torch.transpose(x, 1, 2)
 
         batch,_,_=x.shape # batch size
-
         # Concatenate Class Tensor to Projected Patches
-        class_tensor = self.class_token.repeat(batch,1,1)
+        class_tensor = self.class_token.repeat(batch,1,1).to(self.device)
         x = torch.cat([class_tensor, x], dim=1)
 
         # Add Positional Embedding to Projected Patches
-        x += self.pos_embedding
-
+        pos_embedding = self.pos_embedding.to(self.device)
+        x += pos_embedding
         return x
-
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, emb_size: int = 768, num_heads: int = 8, dropout: float = 0):
@@ -45,7 +60,6 @@ class MultiHeadAttention(nn.Module):
     def forward(self, x : Tensor, mask: Tensor = None) -> Tensor:
         b,n,_ = x.shape #b: batch_size || n: input_size
         d = int(self.emb_size / self.num_heads) # d: sequence_length
-
         # Create 'num_heads' subsets of Query, Key and Values with shape-> (BATCH_SIZE:b, NUM_HEADS:h, SEQUENCE_LENGTH:qdk, EMBEDDING_SIZE:d )
         Q = self.qs(x).reshape((b, self.num_heads, n, d))
         K = self.ks(x).reshape((b, self.num_heads, n, d))
@@ -66,7 +80,7 @@ class MultiHeadAttention(nn.Module):
         output= torch.flatten(output, start_dim=2, end_dim=3)
         output = self.projection(output)
 
-        return attention, output
+        return output
 
 
 class Residuals(nn.Module):
@@ -79,7 +93,6 @@ class Residuals(nn.Module):
         x = self.ffnn(x, **kwargs)
         x += res
         return x
-
 
 # The feed foeward network with 2 linear layers with a GELU nonlinearity
 class MLP(nn.Sequential):
@@ -104,13 +117,12 @@ class Encoder(nn.Sequential):
                 nn.LayerNorm(emb_size),
                 MLP(emb_size, expansion=f_expansion, dropout=f_dropout),
                 nn.Dropout(dropout)
-            )))
-
+            )
+            ))
 
 class TransformerEncoder(nn.Sequential):
     def __init__(self, n_blocks: int = 8, **kwargs):
         super().__init__(*[Encoder(**kwargs) for _ in range(n_blocks)])
-
 
 class ClassLayer(nn.Module):
     def __init__(self, emb_size: int = 768, n_classes: int = 100):
@@ -119,9 +131,8 @@ class ClassLayer(nn.Module):
             nn.LayerNorm(emb_size),
             nn.Linear(emb_size, n_classes))
     def forward(self, x: Tensor) -> Tensor:
-        mean_x = torch.mean(x, dim = 0) #mean over the sequence
+        mean_x = torch.mean(x, dim = 1) #mean over the sequence
         return self.class_head(mean_x)
-
 
 class ViT(nn.Sequential):
     def __init__(self,
@@ -129,11 +140,12 @@ class ViT(nn.Sequential):
                 patch_size: int = 16,
                 emb_size: int = 768,
                 img_size: int = 224,
-                depth: int = 12,
+                depth: int = 6,
                 n_classes: int = 100,
+                device = "cpu",
                 **kwargs):
         super().__init__(
-            PatchEmbedding(in_channels, patch_size, emb_size, img_size),
+            PatchEmbedding(in_channels, patch_size, emb_size, img_size, device),
             TransformerEncoder(depth, emb_size=emb_size, **kwargs),
             ClassLayer(emb_size, n_classes)
         )

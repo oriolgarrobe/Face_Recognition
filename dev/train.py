@@ -25,7 +25,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -81,6 +81,8 @@ def main():
 
     torch.manual_seed(1)
 
+    PATH = "trained_ViT.pt"
+
     use_cuda = torch.cuda.is_available() #set runtime to GPU for 'True'
     device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -103,6 +105,8 @@ def main():
     test_loader = torch.utils.data.DataLoader(test_dataset, **test_kwargs)
 
     model = ViT(n_classes=args.n_faces, device=device).to(device)
+    model.load_state_dict(torch.load(PATH))
+
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
@@ -111,7 +115,7 @@ def main():
         test(model, device, test_loader)
         scheduler.step()
 
-    torch.save(model.state_dict(), "trained_ViT.pt")
+    torch.save(model.state_dict(), PATH)
 
 
 if __name__ == '__main__':
